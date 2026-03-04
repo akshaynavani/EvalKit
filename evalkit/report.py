@@ -83,3 +83,31 @@ def render_comparison(baseline: EvalRun, candidate: EvalRun, diff: dict[str, Any
         f"**Regressed ({len(diff['regressed'])}):** {', '.join(diff['regressed']) or '—'}",
     ]
     return "\n".join(out) + "\n"
+
+
+def render_clusters(clusters: list[Any], examples_per_cluster: int = 2) -> str:
+    """Render :class:`~evalkit.clustering.FailureCluster` objects as Markdown."""
+    if not clusters:
+        return "## Failure clusters\n\nNo failures to cluster.\n"
+    total = sum(c.size for c in clusters)
+    out = [
+        "## Failure clusters",
+        "",
+        _table(
+            ["#", "Size", "Share", "Label", "Categories"],
+            [
+                [c.cluster_id, c.size, _pct(c.size / total), _short(c.label, 50),
+                 ", ".join(f"{k}×{v}" for k, v in sorted(c.categories.items()))]
+                for c in clusters
+            ],
+        ),
+    ]
+    for c in clusters:
+        out += ["", f"### Cluster {c.cluster_id}: {c.label}", ""]
+        if c.top_terms:
+            out.append(f"Top terms: {', '.join(c.top_terms)}")
+            out.append("")
+        for ex in c.representatives[:examples_per_cluster]:
+            out.append(f"- `{ex['task_id']}` — {_short(ex['reason'], 100)}")
+            out.append(f"  - output: {_short(ex['output'], 100)}")
+    return "\n".join(out) + "\n"

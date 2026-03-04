@@ -1,4 +1,4 @@
-"""Command-line interface: ``evalkit run|report|compare|list``."""
+"""Command-line interface: ``evalkit run|report|cluster|compare|list``."""
 
 from __future__ import annotations
 
@@ -10,10 +10,11 @@ from pathlib import Path
 
 import yaml
 
+from evalkit.clustering import cluster_failures
 from evalkit.metrics import compare
 from evalkit.models import GenerationConfig, MockClient, ModelClient, create_client
 from evalkit.prompts import load_prompt
-from evalkit.report import render_comparison, render_run
+from evalkit.report import render_clusters, render_comparison, render_run
 from evalkit.runner import Runner
 from evalkit.storage import RunStore
 from evalkit.tasks import filter_tasks, load_suite
@@ -89,11 +90,29 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_report(args: argparse.Namespace) -> int:
     run = RunStore(args.runs_dir).load(args.run)
     text = render_run(run, max_failures=args.max_failures)
+    if args.clusters:
+        text += "\n" + render_clusters(cluster_failures(run.results))
     if args.output:
         Path(args.output).write_text(text, encoding="utf-8")
         print(f"Wrote {args.output}")
     else:
         print(text)
+    return 0
+
+
+def cmd_cluster(args: argparse.Namespace) -> int:
+    store = RunStore(args.runs_dir)
+    path = store.resolve(args.run)
+    run = store.load(path)
+    clusters = cluster_failures(run.results, max_k=args.max_k, n_examples=args.examples)
+    (path / "clusters.json").write_text(
+        json.dumps([c.to_dict() for c in clusters], indent=2, default=str), encoding="utf-8"
+    )
+    if args.json:
+        print(json.dumps([c.to_dict() for c in clusters], indent=2, default=str))
+    else:
+        print(render_clusters(clusters, examples_per_cluster=args.examples))
+    print(f"Saved clusters to {path / 'clusters.json'}", file=sys.stderr)
     return 0
 
 
@@ -131,7 +150,15 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("run", nargs="?", default="latest")
     p.add_argument("--output", "-o", default=None)
     p.add_argument("--max-failures", type=int, default=25)
+    p.add_argument("--clusters", action="store_true", help="append a failure-cluster section")
     p.set_defaults(func=cmd_report)
+
+    p = sub.add_parser("cluster", help="cluster the failures of a stored run")
+    p.add_argument("run", nargs="?", default="latest")
+    p.add_argument("--max-k", type=int, default=8)
+    p.add_argument("--examples", type=int, default=3)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_cluster)
 
     p = sub.add_parser("compare", help="diff two stored runs")
     p.add_argument("baseline")
