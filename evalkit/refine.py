@@ -204,6 +204,7 @@ def refine_prompt(
 
     best_run, stale = base_run, 0
     seen = {prompt.fingerprint}
+    version = prompt.version
     result.stop_reason = "max iterations reached"
     for i in range(1, iterations + 1):
         if not best_run.failures():
@@ -221,7 +222,8 @@ def refine_prompt(
                 break
             continue
 
-        candidate.version = result.best.version + i  # unique version per round
+        version += 1
+        candidate.version = version  # every proposal gets its own version, accepted or not
         if candidate.fingerprint in seen:
             log(f"iteration {i}: refiner repeated an earlier prompt")
         seen.add(candidate.fingerprint)

@@ -1,4 +1,4 @@
-"""Command-line interface: ``evalkit run|report|cluster|compare|list``."""
+"""Command-line interface: ``evalkit run|refine|report|cluster|compare|list``."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from evalkit.clustering import cluster_failures
 from evalkit.metrics import compare
 from evalkit.models import GenerationConfig, MockClient, ModelClient, create_client
 from evalkit.prompts import load_prompt
+from evalkit.refine import PromptRefiner, refine_prompt, save_refinement
 from evalkit.report import render_clusters, render_comparison, render_run
 from evalkit.runner import Runner
 from evalkit.storage import RunStore
@@ -116,6 +117,46 @@ def cmd_cluster(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_refine(args: argparse.Namespace) -> int:
+    tasks = filter_tasks(load_suite(args.suite), args.category, args.limit)
+    prompt = load_prompt(args.prompt)
+    client = build_client(args.model, args)
+    judge = build_client(args.judge, args) if args.judge else None
+    refiner_client = build_client(args.refiner or args.model, args)
+    runner = Runner(client, judge_client=judge, concurrency=args.concurrency)
+    store = RunStore(args.runs_dir)
+    result = refine_prompt(
+        tasks,
+        prompt,
+        runner,
+        PromptRefiner(refiner_client),
+        iterations=args.iterations,
+        patience=args.patience,
+        min_delta=args.min_delta,
+        holdout_frac=args.holdout,
+        store=store,
+        suite_name=Path(args.suite).stem,
+        log=lambda msg: print(msg, file=sys.stderr),
+    )
+    out = save_refinement(result, args.output or store.root / "refinements" / f"{prompt.name}")
+    print(f"\nStopped: {result.stop_reason}")
+    print(f"{'Iter':<5} {'Prompt':<22} {'Dev acc':>8}  Status")
+    for step in result.steps:
+        status = "error: " + step.error[:50] if step.error else ("kept" if step.accepted else "rejected")
+        print(f"{step.iteration:<5} {step.prompt_label:<22} {step.dev_accuracy * 100:7.1f}%  {status}")
+    print(
+        f"\nBest prompt {result.best.label}: dev {result.baseline_dev_accuracy * 100:.1f}% -> "
+        f"{result.best_dev_accuracy * 100:.1f}%"
+    )
+    if result.best_holdout_accuracy is not None:
+        print(
+            f"Holdout: {result.baseline_holdout_accuracy * 100:.1f}% -> "
+            f"{result.best_holdout_accuracy * 100:.1f}%"
+        )
+    print(f"Saved refinement history and best prompt to {out}")
+    return 0
+
+
 def cmd_compare(args: argparse.Namespace) -> int:
     store = RunStore(args.runs_dir)
     base, cand = store.load(args.baseline), store.load(args.candidate)
@@ -145,6 +186,17 @@ def build_parser() -> argparse.ArgumentParser:
     _add_model_args(p)
     p.add_argument("--fail-under", type=float, default=None, help="exit 1 if accuracy is below this")
     p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("refine", help="iteratively refine a prompt from clustered failures")
+    _add_suite_args(p)
+    _add_model_args(p)
+    p.add_argument("--refiner", default=None, help="provider:model that rewrites prompts (default: --model)")
+    p.add_argument("--iterations", "-n", type=int, default=3)
+    p.add_argument("--patience", type=int, default=2)
+    p.add_argument("--min-delta", type=float, default=0.0)
+    p.add_argument("--holdout", type=float, default=0.0, help="fraction of tasks held out from refinement")
+    p.add_argument("--output", "-o", default=None, help="directory for refinement.json + best prompt")
+    p.set_defaults(func=cmd_refine)
 
     p = sub.add_parser("report", help="render a stored run as Markdown")
     p.add_argument("run", nargs="?", default="latest")
