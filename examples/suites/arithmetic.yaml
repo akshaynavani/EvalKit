@@ -1,0 +1,22 @@
+defaults:
+  category: arithmetic
+  grader: { type: numeric, extract: last_number, abs_tol: 0.01 }
+tasks:
+  - id: arith-001
+    input: { question: "A shop sells pens at $3 each. How much do 14 pens cost?" }
+    expected: 42
+  - id: arith-002
+    input: { question: "What is 17% of 250?" }
+    expected: 42.5
+  - id: arith-003
+    input: { question: "A train travels 180 km in 2.5 hours. What is its average speed in km/h?" }
+    expected: 72
+  - id: arith-004
+    input: { question: "If x + 2x + 3x = 48, what is x?" }
+    expected: 8
+  - id: arith-005
+    input: { question: "Sam has 3 boxes of 12 eggs and breaks 5. How many eggs remain?" }
+    expected: 31
+  - id: arith-006
+    input: { question: "What is the sum of the integers from 1 to 20?" }
+    expected: 210

@@ -1,0 +1,4 @@
+name: general_qa
+version: 1
+system: You are a helpful assistant.
+user: "{question}"

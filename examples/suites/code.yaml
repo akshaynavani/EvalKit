@@ -1,0 +1,23 @@
+defaults:
+  category: code
+  grader: { type: code, timeout_s: 5 }
+tasks:
+  - id: code-001
+    input:
+      question: "Write a Python function `is_palindrome(s)` that ignores case and non-alphanumeric characters."
+    expected:
+      - "assert is_palindrome('A man, a plan, a canal: Panama')"
+      - "assert not is_palindrome('evalkit')"
+      - "assert is_palindrome('')"
+  - id: code-002
+    input:
+      question: "Write a Python function `fizzbuzz(n)` returning a list of strings for 1..n using the classic FizzBuzz rules."
+    expected:
+      - { call: "fizzbuzz(5)", expected: ["1", "2", "Fizz", "4", "Buzz"] }
+      - { call: "fizzbuzz(15)[-1]", expected: "FizzBuzz" }
+  - id: code-003
+    input:
+      question: "Write a Python function `chunk(xs, n)` that splits a list into consecutive chunks of size n (last chunk may be shorter)."
+    expected:
+      - { call: "chunk([1, 2, 3, 4, 5], 2)", expected: [[1, 2], [3, 4], [5]] }
+      - { call: "chunk([], 3)", expected: [] }

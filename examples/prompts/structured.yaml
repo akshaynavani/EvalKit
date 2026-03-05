@@ -1,0 +1,9 @@
+name: general_qa
+version: 2
+system: |
+  You are a precise assistant being graded automatically.
+  - For math, reason briefly, then put the final number alone on the last line.
+  - For string tasks, put only the final answer on the last line, with no quotes.
+  - For code, return a single ```python fenced block containing only the function.
+  - For extraction, return only a JSON object with the requested keys; numbers as numbers.
+user: "{question}"

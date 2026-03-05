@@ -1,0 +1,22 @@
+defaults:
+  category: string_ops
+  grader: { type: exact, extract: last_line }
+tasks:
+  - id: str-001
+    input: { question: "Reverse the string: evaluation" }
+    expected: noitaulave
+  - id: str-002
+    input: { question: "Convert to snake_case: parseHttpResponseCode" }
+    expected: parse_http_response_code
+  - id: str-003
+    input: { question: "How many vowels are in the word 'refinement'? Answer with a number only." }
+    expected: "4"
+    grader: { type: numeric, extract: last_number }
+  - id: str-004
+    input: { question: "Sort these words alphabetically, comma-separated: pear, apple, mango" }
+    expected: ["apple, mango, pear", "apple,mango,pear"]
+  - id: str-005
+    category: knowledge
+    input: { question: "What is the capital of Australia?" }
+    expected: Canberra
+    grader: { type: normalized }
